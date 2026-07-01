@@ -43,7 +43,7 @@ run = RunFunction.apply
 class Env:
     def __init__(self, batch_size, width, height, grad_decay, device='cpu', fov_x_half_tan=0.53,
                  single=False, gate=False, ground_voxels=False, scaffold=False, speed_mtp=1,
-                 random_rotation=False, cam_angle=10) -> None:
+                 random_rotation=False, cam_angle=10, random_z=False, z_min = 0.4, z_max = 4.0, random_z_prob = 0.3) -> None:     #added random_z, z_min, z_max
         self.device = device
         self.batch_size = batch_size
         self.width = width
@@ -196,6 +196,15 @@ class Env:
             torch.rand_like(scale) - 0.5], -1)
         self.p = self.p_init * scale + torch.randn_like(scale) * 0.1
         self.p_target = self.p_end * scale + torch.randn_like(scale) * 0.1
+
+        if self.random_z:   #added randomization on z-axis not for 100% batch
+            mask = torch.rand((B, ), device=device) < self.random_z_prob
+
+            z_init = torch.rand((B,), device=device) * (self.z_max - self.z_min) + self.z_min
+            z_target = torch.rand((B,), device=device) * (self.z_max - self.z_min) + self.z_min
+
+            self.p[mask, 2] = z_init[mask]
+            self.p_target[mask, 2] = z_target[mask]
 
         if self.random_rotation:
             yaw_bias = torch.rand(B//self.n_drones_per_group, device=device).repeat_interleave(self.n_drones_per_group, 0) * 1.5 - 0.75

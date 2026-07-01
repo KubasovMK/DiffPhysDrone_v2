@@ -41,6 +41,11 @@ parser.add_argument('--scaffold', default=False, action='store_true')
 parser.add_argument('--random_rotation', default=False, action='store_true')
 parser.add_argument('--yaw_drift', default=False, action='store_true')
 parser.add_argument('--no_odom', default=False, action='store_true')
+parser.add_argument('--coef_altitude_bounds', type=float, default=0.2)
+parser.add_argument('--z_min', type=float, default=0.4)
+parser.add_argument('--z_max', type=float, default=4.0)
+parser.add_argument('--randon_z_prob', type=float, default=0.3)
+
 args = parser.parse_args()
 writer = SummaryWriter()
 print(args)
@@ -51,7 +56,7 @@ env = Env(args.batch_size, 64, 48, args.grad_decay, device,
           fov_x_half_tan=args.fov_x_half_tan, single=args.single,
           gate=args.gate, ground_voxels=args.ground_voxels,
           scaffold=args.scaffold, speed_mtp=args.speed_mtp,
-          random_rotation=args.random_rotation, cam_angle=args.cam_angle)
+          random_rotation=args.random_rotation, cam_angle=args.cam_angle, random_z=args.random_z, z_min=args.z_min, z_max=args.z_max) #added random_z, z_min, z_max
 if args.no_odom:
     model = Model(7, 6)
 else:
@@ -166,6 +171,11 @@ for i in pbar:
 
     p_history = torch.stack(p_history)
     loss_ground_affinity = p_history[..., 2].relu().pow(2).mean()
+    
+    z = p_history[..., 2] #added z
+    loss_altitude_bounds = (args.z_min - z).relu().pow(2).mean() + \
+                           (z - args.z_max).relu().pow(2).mean()        #added loss_altitude_bounds
+    
     act_buffer = torch.stack(act_buffer)
 
     v_history = torch.stack(v_history)
@@ -210,7 +220,8 @@ for i in pbar:
         args.coef_speed * loss_speed + \
         args.coef_v_pred * loss_v_pred + \
         args.coef_collide * loss_collide + \
-        args.coef_ground_affinity + loss_ground_affinity
+        args.coef_ground_affinity * loss_ground_affinity + \
+        args.coef_altitude_bounds * loss_altitude_bounds
 
     if torch.isnan(loss):
         print("loss is nan, exiting...")
@@ -239,6 +250,7 @@ for i in pbar:
             'loss_speed': loss_speed,
             'loss_collide': loss_collide,
             'loss_ground_affinity': loss_ground_affinity,
+            'loss_altitude_bounds': loss_altitude_bounds,          #added loss_altitude_bounds
             'success': _success,
             'max_speed': speed_history.max(0).values.mean(),
             'avg_speed': avg_speed.mean(),
