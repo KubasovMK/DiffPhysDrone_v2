@@ -42,9 +42,16 @@ parser.add_argument('--random_rotation', default=False, action='store_true')
 parser.add_argument('--yaw_drift', default=False, action='store_true')
 parser.add_argument('--no_odom', default=False, action='store_true')
 parser.add_argument('--coef_altitude_bounds', type=float, default=0.2)
+parser.add_argument('--random_z', default=False, action='store_true')
 parser.add_argument('--z_min', type=float, default=0.4)
 parser.add_argument('--z_max', type=float, default=4.0)
 parser.add_argument('--randon_z_prob', type=float, default=0.3)
+
+parser.add_argument('--over_wall', default=False, action='store_true')
+parser.add_argument('--edge_gap', default=False, action='store_true')
+parser.add_argument('--over_wall_prob', type=float, default=0.0)
+parser.add_argument('--edge_gap_prob', type=float, default=0.0)
+
 
 args = parser.parse_args()
 writer = SummaryWriter()
@@ -56,7 +63,16 @@ env = Env(args.batch_size, 64, 48, args.grad_decay, device,
           fov_x_half_tan=args.fov_x_half_tan, single=args.single,
           gate=args.gate, ground_voxels=args.ground_voxels,
           scaffold=args.scaffold, speed_mtp=args.speed_mtp,
-          random_rotation=args.random_rotation, cam_angle=args.cam_angle, random_z=args.random_z, z_min=args.z_min, z_max=args.z_max) #added random_z, z_min, z_max
+          random_rotation=args.random_rotation, cam_angle=args.cam_angle, 
+          
+          #added random_z, z_min, z_max
+          random_z=args.random_z, z_min=args.z_min, z_max=args.z_max,
+          random_z_prob=args.random_z_prob, 
+          
+          #added custom obstacle avoidance
+          over_wall=args.over_wall, edge_gap=args.edge_gap, 
+          over_wall_prob=args.over_wall_prob, edge_gap_prob=args.edge_gap_prob,
+          ) 
 if args.no_odom:
     model = Model(7, 6)
 else:

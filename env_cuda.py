@@ -43,7 +43,8 @@ run = RunFunction.apply
 class Env:
     def __init__(self, batch_size, width, height, grad_decay, device='cpu', fov_x_half_tan=0.53,
                  single=False, gate=False, ground_voxels=False, scaffold=False, speed_mtp=1,
-                 random_rotation=False, cam_angle=10, random_z=False, z_min = 0.4, z_max = 4.0, random_z_prob = 0.3) -> None:     #added random_z, z_min, z_max
+                 random_rotation=False, cam_angle=10, random_z=False, z_min = 0.4, z_max = 4.0, 
+                 random_z_prob = 0.3, over_wall=False, edge_gap=False, over_wall_prob=0.0, edge_gap_prob=0.0) -> None:     #added random_z, z_min, z_max
         self.device = device
         self.batch_size = batch_size
         self.width = width
@@ -94,6 +95,19 @@ class Env:
         self.random_rotation = random_rotation
         self.cam_angle = cam_angle
         self.fov_x_half_tan = fov_x_half_tan
+
+        #z-axis randomization  
+        self.random_z = random_z
+        self.z_min = z_min
+        self.z_max = z_max
+        self.random_z_prob = random_z_prob
+
+        #custom obstacle avoidance
+        self.over_wall = over_wall
+        self.edge_gap = edge_gap
+        self.over_wall_prob = over_wall_prob
+        self.edge_gap_prob = edge_gap_prob
+
         self.reset()
         # self.obj_avoid_grad_mtp = torch.tensor([0.5, 2., 1.], device=device)
 
@@ -197,6 +211,11 @@ class Env:
         self.p = self.p_init * scale + torch.randn_like(scale) * 0.1
         self.p_target = self.p_end * scale + torch.randn_like(scale) * 0.1
 
+        #added wall across trajectory
+        wall_prob = 0.3
+        mask = torch.rand(B, device=device) < wall_prob
+
+
         if self.random_z:   #added randomization on z-axis not for 100% batch
             mask = torch.rand((B, ), device=device) < self.random_z_prob
 
@@ -218,6 +237,13 @@ class Env:
             self.voxels[..., :3] = (R @ self.voxels[..., :3].transpose(1, 2)).transpose(1, 2)
             self.balls[..., :3] = (R @ self.balls[..., :3].transpose(1, 2)).transpose(1, 2)
             self.cyl[..., :3] = (R @ self.cyl[..., :3].transpose(1, 2)).transpose(1, 2)
+
+        #custom obstacles
+        if self.over_wall:
+            self._add_over_wall_scenario(prob=self.over_wall_prob)
+
+        if self.edge_gap:
+            self._add_edge_gap_scenario(prob=self.edge_gap_prob)
 
         # scaffold
         if self.scaffold and random.random() < 0.5:
@@ -262,6 +288,156 @@ class Env:
         self.drag_2 = torch.rand((B, 2), device=device) * 0.15 + 0.3
         self.drag_2[:, 0] = 0
         self.z_drag_coef = torch.ones((B, 1), device=device)
+
+    @torch.no_grad()
+    def _add_over_wall_scenario(self, prob = 0.25):
+        '''
+        Adds a wall that blocks direct path to target point.
+        The intended behaviour is to fly over the wall
+
+        self.voxels format: [cx, cy, cz, rx, ry, rz]
+        c = box center, r = box half-size
+        '''
+        B = self.batch_size
+        device = self.device
+
+        mask = torch.rand((B,), device=device) < prob
+        n = int(mask.sum().item())
+        if n == 0:
+            return
+        
+        # Controlled route: fly approximately along +X
+        self.p[mask] = torch.tensor([0.0, 0.0, 1.0], device=device) + \
+            torch.randn((n , 3), device=device) * 0.05
+        self.p_target[mask] = torch.tensor([8.0, 0.0, 1.0], device=device) + \
+            torch.randn((n , 3), device=device) * 0.05
+        
+        wall_x = torch.empty((B, ), device=device).uniform_(3.5, 4.5)
+        wall_y = torch.empty((B, ), device=device).uniform_(-0.15, 0.15)
+
+        wall_rx = torch.empty((B, ), device=device).uniform_(0.10, 0.18)
+        wall_ry = torch.empty((B, ), device=device).uniform_(4.5, 6.5)
+
+        wall_bottom_z = torch.full((B, ), -1.0, device=device)
+        wall_top_z = torch.empty((B, ), device=device).uniform_(1.45, 1.95)
+        wall_center_z = 0.5 * (wall_bottom_z + wall_top_z)
+        wall_rz = 0.5 * (wall_top_z - wall_bottom_z)
+
+        #Give the height loss a useful vertical signal for selected samples.
+        #The final target becomes slightly higher than the wall top 
+
+        overflight_z = (wall_top_z + torch.empty((B,), device=device).uniform_(0.35, 0.75)).clamp(
+        min=self.z_min, max=self.z_max)
+
+        self.p_target[mask, 2] = overflight_z[mask]
+
+        wall = torch.stack([
+            wall_x,
+            wall_y,
+            wall_center_z,
+            wall_rx,
+            wall_ry,
+            wall_rz,
+        ], dim=-1).unsqueeze(1)  # [B, 1, 6]
+
+        # Disabled samples receive a far-away wall.
+        wall[~mask, :, 0] = -100.0
+
+        self.voxels = torch.cat([self.voxels, wall], dim=1)
+        
+    @torch.no_grad
+    def _add_edge_gap_scenario(self, prob=0.25):
+        """
+        Adds a wall with a side gap near the left or right border of the depth map. 
+        The central part of the depth map is blocked.
+
+        self.voxels format: [cx, cy, cz, rx, ry, rz]
+        """
+
+        B = self.batch_size 
+        device = self.device
+
+        mask = torch.rand((B, ), device=device) < prob
+        mask = torch.rand((B,), device=device) < prob
+        n = int(mask.sum().item())
+        if n == 0:
+            return
+
+        # Controlled route: the target is behind the wall, near the image center.
+        self.p[mask] = torch.tensor([0.0, 0.0, 1.0], device=device) + \
+            torch.randn((n, 3), device=device) * 0.05
+        self.p_target[mask] = torch.tensor([8.0, 0.0, 1.0], device=device) + \
+            torch.randn((n, 3), device=device) * 0.05
+
+        # Randomize target height only if z randomization is enabled.
+        # Otherwise keep the original z=1.0 behavior for this scenario.
+        if self.random_z:
+            target_z = torch.empty((B,), device=device).uniform_(self.z_min, min(self.z_max, 2.2))
+            self.p_target[mask, 2] = target_z[mask]
+
+        wall_x = torch.empty((B,), device=device).uniform_(3.6, 4.4)
+        wall_rx = torch.empty((B,), device=device).uniform_(0.10, 0.18)
+
+        # Tall enough to make going around the edge preferable to flying over it.
+        wall_bottom_z = torch.full((B,), -1.0, device=device)
+        wall_top_z = torch.empty((B,), device=device).uniform_(2.7, 3.8)
+        wall_center_z = 0.5 * (wall_bottom_z + wall_top_z)
+        wall_rz = 0.5 * (wall_top_z - wall_bottom_z)
+
+        wall_half_y = torch.empty((B,), device=device).uniform_(4.5, 6.0)
+
+        # Randomly select left or right edge.
+        side = torch.where(
+            torch.rand((B,), device=device) < 0.5,
+            torch.tensor(-1.0, device=device),
+            torch.tensor(1.0, device=device),
+        )
+
+        # Place the gap close to the horizontal FOV edge.
+        # For wall_x ~= 4 and fov_x_half_tan ~= 0.53,
+        # y ~= 2.1 corresponds to a near-border ray.
+        edge_fraction = torch.empty((B,), device=device).uniform_(0.82, 0.95)
+        gap_center_y = side * wall_x * self._fov_x_half_tan * edge_fraction
+        gap_half_width = torch.empty((B,), device=device).uniform_(0.30, 0.50)
+
+        y_min = -wall_half_y
+        y_max = wall_half_y
+
+        block1_y_min = y_min
+        block1_y_max = gap_center_y - gap_half_width
+        block2_y_min = gap_center_y + gap_half_width
+        block2_y_max = y_max
+
+        block1_center_y = 0.5 * (block1_y_min + block1_y_max)
+        block2_center_y = 0.5 * (block2_y_min + block2_y_max)
+        block1_ry = (0.5 * (block1_y_max - block1_y_min)).clamp_min(0.05)
+        block2_ry = (0.5 * (block2_y_max - block2_y_min)).clamp_min(0.05)
+
+        block1 = torch.stack([
+            wall_x,
+            block1_center_y,
+            wall_center_z,
+            wall_rx,
+            block1_ry,
+            wall_rz,
+        ], dim=-1)
+
+        block2 = torch.stack([
+            wall_x,
+            block2_center_y,
+            wall_center_z,
+            wall_rx,
+            block2_ry,
+            wall_rz,
+        ], dim=-1)
+
+        edge_wall = torch.stack([block1, block2], dim=1)  # [B, 2, 6]
+
+        # Disabled samples receive far-away blocks.
+        edge_wall[~mask, :, 0] = -100.0
+
+        self.voxels = torch.cat([self.voxels, edge_wall], dim=1)
+
 
     @staticmethod
     @torch.no_grad()
