@@ -1,0 +1,15 @@
+{
+  "trial_id": 39,
+  "batch_idx": 24,
+  "score": 34.31184387207031,
+  "metrics": {
+    "z_gain": 2.839782476425171,
+    "final_z_delta": 2.5230679512023926,
+    "forward_progress": 101.6638412475586,
+    "avg_speed": 10.418898582458496,
+    "max_speed": 13.31386661529541,
+    "center_obstacle_score": 0.5346462726593018,
+    "center_depth_min": 3.4653537273406982,
+    "center_depth_max": 3330.328369140625
+  }
+}

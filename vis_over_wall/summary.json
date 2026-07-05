@@ -1,0 +1,87 @@
+[
+  {
+    "rank": 0,
+    "trial_id": 39,
+    "batch_idx": 24,
+    "score": 34.31184387207031,
+    "metrics": {
+      "z_gain": 2.839782476425171,
+      "final_z_delta": 2.5230679512023926,
+      "forward_progress": 101.6638412475586,
+      "avg_speed": 10.418898582458496,
+      "max_speed": 13.31386661529541,
+      "center_obstacle_score": 0.5346462726593018,
+      "center_depth_min": 3.4653537273406982,
+      "center_depth_max": 3330.328369140625
+    },
+    "case_dir": "vis_over_wall/case_00"
+  },
+  {
+    "rank": 1,
+    "trial_id": 5,
+    "batch_idx": 14,
+    "score": 33.416722154617304,
+    "metrics": {
+      "z_gain": 5.57219934463501,
+      "final_z_delta": 3.120663642883301,
+      "forward_progress": 57.197731018066406,
+      "avg_speed": 6.441646099090576,
+      "max_speed": 11.328328132629395,
+      "center_obstacle_score": 2.956526756286621,
+      "center_depth_min": 1.043473243713379,
+      "center_depth_max": 71.6416015625
+    },
+    "case_dir": "vis_over_wall/case_01"
+  },
+  {
+    "rank": 2,
+    "trial_id": 13,
+    "batch_idx": 10,
+    "score": 33.41335725784302,
+    "metrics": {
+      "z_gain": 6.854879856109619,
+      "final_z_delta": 6.489980697631836,
+      "forward_progress": 52.4268798828125,
+      "avg_speed": 5.736867904663086,
+      "max_speed": 11.085956573486328,
+      "center_obstacle_score": 0.36831092834472656,
+      "center_depth_min": 3.6316890716552734,
+      "center_depth_max": 332.6405029296875
+    },
+    "case_dir": "vis_over_wall/case_02"
+  },
+  {
+    "rank": 3,
+    "trial_id": 29,
+    "batch_idx": 14,
+    "score": 32.426462745666505,
+    "metrics": {
+      "z_gain": 1.7030353546142578,
+      "final_z_delta": 0.5059554576873779,
+      "forward_progress": 100.27845764160156,
+      "avg_speed": 10.115616798400879,
+      "max_speed": 14.187142372131348,
+      "center_obstacle_score": 2.436180591583252,
+      "center_depth_min": 1.5638192892074585,
+      "center_depth_max": 99.17259979248047
+    },
+    "case_dir": "vis_over_wall/case_03"
+  },
+  {
+    "rank": 4,
+    "trial_id": 23,
+    "batch_idx": 6,
+    "score": 31.49628767967224,
+    "metrics": {
+      "z_gain": 5.292487621307373,
+      "final_z_delta": 5.292487621307373,
+      "forward_progress": 56.74965286254883,
+      "avg_speed": 6.108274936676025,
+      "max_speed": 8.761162757873535,
+      "center_obstacle_score": 2.0205841064453125,
+      "center_depth_min": 1.979415774345398,
+      "center_depth_max": 13735.818359375
+    },
+    "case_dir": "vis_over_wall/case_04"
+  }
+]
