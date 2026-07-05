@@ -1,0 +1,26 @@
+
+# Virtual environments
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Training logs
+runs/
+logs/
+experiments/*/logs/
+experiments/*/train.log
+events.out.tfevents.*
+
+# Model checkpoints
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# Build artifacts
+build/
+devel/
+install/
