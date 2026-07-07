@@ -44,7 +44,8 @@ class Env:
     def __init__(self, batch_size, width, height, grad_decay, device='cpu', fov_x_half_tan=0.53,
                  single=False, gate=False, ground_voxels=False, scaffold=False, speed_mtp=1,
                  random_rotation=False, cam_angle=10, random_z=False, z_min = 0.4, z_max = 4.0, 
-                 random_z_prob = 0.3, over_wall=False, edge_gap=False, over_wall_prob=0.0, edge_gap_prob=0.0) -> None:     #added random_z, z_min, z_max
+                 random_z_prob = 0.3, over_wall=False, edge_gap=False, over_wall_prob=0.0, edge_gap_prob=0.0, 
+                 edge_gap_block_ratio_min=0.85, edge_gap_block_ratio_max=0.90, edge_gap_aim_target=True) -> None:     #added random_z, z_min, z_max
         self.device = device
         self.batch_size = batch_size
         self.width = width
@@ -107,6 +108,10 @@ class Env:
         self.edge_gap = edge_gap
         self.over_wall_prob = over_wall_prob
         self.edge_gap_prob = edge_gap_prob
+
+        self.edge_gap_block_ratio_min = edge_gap_block_ratio_min
+        self.edge_gap_block_ratio_max = edge_gap_block_ratio_max
+        self.edge_gap_aim_target = edge_gap_aim_target
 
         self.reset()
         # self.obj_avoid_grad_mtp = torch.tensor([0.5, 2., 1.], device=device)
