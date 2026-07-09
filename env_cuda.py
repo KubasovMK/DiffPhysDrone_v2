@@ -45,7 +45,8 @@ class Env:
                  single=False, gate=False, ground_voxels=False, scaffold=False, speed_mtp=1,
                  random_rotation=False, cam_angle=10, random_z=False, z_min = 0.4, z_max = 4.0, 
                  random_z_prob = 0.3, over_wall=False, edge_gap=False, over_wall_prob=0.0, edge_gap_prob=0.0, 
-                 edge_gap_block_ratio_min=0.85, edge_gap_block_ratio_max=0.90, edge_gap_aim_target=True) -> None:     #added random_z, z_min, z_max
+                 edge_gap_block_ratio_min=0.85, edge_gap_block_ratio_max=0.90, edge_gap_aim_target=True,
+                 traj_points=8, traj_dt=0.25, traj_pos_scale=5.0, traj_time_scale=2.0,) -> None:     #added random_z, z_min, z_max
         self.device = device
         self.batch_size = batch_size
         self.width = width
@@ -113,6 +114,12 @@ class Env:
         self.edge_gap_block_ratio_max = edge_gap_block_ratio_max
         self.edge_gap_aim_target = edge_gap_aim_target
 
+        #trajectory segments
+        self.traj_points = traj_points
+        self.traj_dt = traj_dt
+        self.traj_pos_scale = traj_pos_scale
+        self.traj_time_scale = traj_time_scale
+        
         self.reset()
         # self.obj_avoid_grad_mtp = torch.tensor([0.5, 2., 1.], device=device)
 
@@ -250,6 +257,9 @@ class Env:
         if self.edge_gap:
             self._add_edge_gap_scenario(prob=self.edge_gap_prob)
 
+        #reference trajectory
+        self._build_reference_trajectory()
+
         # scaffold
         if self.scaffold and random.random() < 0.5:
             x = torch.arange(1, 6, dtype=torch.float, device=device)
@@ -293,6 +303,83 @@ class Env:
         self.drag_2 = torch.rand((B, 2), device=device) * 0.15 + 0.3
         self.drag_2[:, 0] = 0
         self.z_drag_coef = torch.ones((B, 1), device=device)
+
+    @torch.no_grad()
+    def _build_reference_trajectory(self):
+        """
+        Stores a simple time-parameterized reference trajectory for each sample.
+
+        MVP version:
+        straight line from current start position to current target position.
+        Later this can be replaced by local planner trajectory:
+        [(t, x, y, z, theta), ...].
+        """
+        self.traj_start = self.p.detach().clone()
+        self.traj_goal = self.p_target.detach().clone()
+
+        delta = self.traj_goal - self.traj_start
+        dist = torch.norm(delta, dim=-1).clamp_min(0.1)
+
+        max_speed = self.max_speed.reshape(-1).clamp_min(0.5)
+        self.traj_total_time = (dist / max_speed).clamp_min(1.0)
+
+        # Reference yaw is the direction of the path in XY.
+        self.traj_yaw = torch.atan2(delta[:, 1], delta[:, 0])
+
+
+    @torch.no_grad()
+    def get_traj_features(self, sim_time, R_local):
+        """
+        Returns trajectory features with shape [B, K, 6].
+
+        Feature per future point:
+        [dt, dx_body, dy_body, dz_body, sin(dtheta), cos(dtheta)]
+
+        R_local is the same local frame matrix used in main_cuda.py for state.
+        """
+        B = self.batch_size
+        device = self.device
+        dtype = self.p.dtype
+        K = self.traj_points
+
+        step_ids = torch.arange(1, K + 1, device=device, dtype=dtype)
+        dt = step_ids[None, :] * self.traj_dt  # [1, K]
+
+        future_time = float(sim_time) + dt  # [1, K]
+        alpha = future_time / self.traj_total_time[:, None]
+        alpha = alpha.clamp(0.0, 1.0)
+
+        p_ref = self.traj_start[:, None, :] + alpha[:, :, None] * (
+            self.traj_goal[:, None, :] - self.traj_start[:, None, :]
+        )
+
+        # Current position -> future reference points.
+        dp_world = p_ref - self.p.detach()[:, None, :]
+
+        # Convert world-frame displacement to local/body-like frame.
+        # This matches the convention used in main_cuda.py:
+        # local_vector = world_vector @ R
+        dp_local = torch.bmm(dp_world, R_local)
+
+        fwd = R_local[:, :, 0]
+        yaw_now = torch.atan2(fwd[:, 1], fwd[:, 0])
+
+        dtheta = self.traj_yaw[:, None] - yaw_now[:, None]
+        dtheta = torch.atan2(torch.sin(dtheta), torch.cos(dtheta))
+
+        traj = torch.stack(
+            [
+                dt.expand(B, K) / self.traj_time_scale,
+                dp_local[:, :, 0] / self.traj_pos_scale,
+                dp_local[:, :, 1] / self.traj_pos_scale,
+                dp_local[:, :, 2] / self.traj_pos_scale,
+                torch.sin(dtheta),
+                torch.cos(dtheta),
+            ],
+            dim=-1,
+        )
+
+        return traj
 
     @torch.no_grad()
     def _add_over_wall_scenario(self, prob = 0.25):

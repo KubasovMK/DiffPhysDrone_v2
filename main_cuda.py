@@ -60,6 +60,13 @@ parser.add_argument(
     action=argparse.BooleanOptionalAction,
 )
 
+parser.add_argument('--traj_conditioning', type=float, action='store_true')
+parser.add_argument('--traj_points', type=int, default=8)
+parser.add_argument('--traj_dt', type=float, default=0.25)
+parser.add_argument('--traj_pos_scale', type=float, default=5.0)
+parser.add_argument('--traj_time_scale', type=float, default=2.0)
+
+
 args = parser.parse_args()
 writer = SummaryWriter()
 print(args)
@@ -81,13 +88,23 @@ env = Env(args.batch_size, 64, 48, args.grad_decay, device,
           over_wall_prob=args.over_wall_prob, edge_gap_prob=args.edge_gap_prob,
           edge_gap_block_ratio_min=args.edge_gap_block_ratio_min,
           edge_gap_block_ratio_max=args.edge_gap_block_ratio_max,
-          edge_gap_aim_target=args.edge_gap_aim_target
+          edge_gap_aim_target=args.edge_gap_aim_target,
+
+          traj_points=args.traj_points,
+          traj_dt=args.traj_dt,
+          traj_pos_scale=args.traj_pos_scale,
+          traj_time_scale=args.traj_time_scale,
           ) 
-if args.no_odom:
-    model = Model(7, 6)
-else:
-    model = Model(7+3, 6)
-model = model.to(device)
+
+dim_obs = 7 if args.no_odom else 7+3
+traj_points = args.traj_points if args.traj_conditioning else 0
+
+model = Model(
+    dim_obs=dim_obs, 
+    dim_action=6,
+    traj_points=traj_points,
+    traj_dim=6
+)
 
 if args.resume:
     state_dict = torch.load(args.resume, map_location=device)
@@ -135,6 +152,7 @@ for i in pbar:
     act_lag = 1
     act_buffer = [env.act] * (act_lag + 1)
     target_v_raw = env.p_target - env.p
+    sim_time = 0.0
     if args.yaw_drift:
         drift_av = torch.randn(B, device=device) * (5 * math.pi / 180 / 15)
         zeros = torch.zeros_like(drift_av)
@@ -160,6 +178,7 @@ for i in pbar:
         else:
             target_v_raw = env.p_target - env.p.detach()
         env.run(act_buffer[t], ctl_dt, target_v_raw)
+        sim_time += ctl_dt
 
         R = env.R
         fwd = env.R[:, :, 0].clone()
@@ -181,10 +200,15 @@ for i in pbar:
             state.insert(0, local_v)
         state = torch.cat(state, -1)
 
+        if args.traj_conditioning:
+            traj = env.get_traj_features(sim_time, R)
+        else:
+            traj = None
+                
         # normalize
         x = 3 / depth.clamp_(0.3, 24) - 0.6 + torch.randn_like(depth) * 0.02
         x = F.max_pool2d(x[:, None], 4, 4)
-        act, values, h = model(x, state, h)
+        act, values, h = model(x, state, h, traj)
 
         a_pred, v_pred, *_ = (R @ act.reshape(B, 3, -1)).unbind(-1)
         v_preds.append(v_pred)
