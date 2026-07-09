@@ -45,7 +45,7 @@ parser.add_argument('--coef_altitude_bounds', type=float, default=0.2)
 parser.add_argument('--random_z', default=False, action='store_true')
 parser.add_argument('--z_min', type=float, default=0.4)
 parser.add_argument('--z_max', type=float, default=4.0)
-parser.add_argument('--randon_z_prob', type=float, default=0.3)
+parser.add_argument('--random_z_prob', type=float, default=0.3)
 
 parser.add_argument('--over_wall', default=False, action='store_true')
 parser.add_argument('--edge_gap', default=False, action='store_true')
@@ -53,7 +53,7 @@ parser.add_argument('--over_wall_prob', type=float, default=0.0)
 parser.add_argument('--edge_gap_prob', type=float, default=0.0)
 
 parser.add_argument('--edge_gap_block_ratio_min', type=float, default=0.85)
-parser.add_argument('--edge_gap_block_ratio_min', type=float, default=0.90)
+parser.add_argument('--edge_gap_block_ratio_max', type=float, default=0.90)
 parser.add_argument(
     '--edge_gap_aim_target',
     default=True,
