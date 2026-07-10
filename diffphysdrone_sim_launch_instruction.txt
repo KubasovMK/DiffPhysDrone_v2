@@ -1,0 +1,341 @@
+DiffPhysDrone / high_speed_flight simulation launch instruction
+==============================================================
+
+0. Important paths
+------------------
+
+On host:
+
+    /home/qqsiki4/DiffPhysDrone_eval/high_speed_flight
+
+Inside Docker container:
+
+    /workspace/DiffPhysDrone/high_speed_flight
+
+Docker image:
+
+    diffphysdrone-noetic:latest
+
+Docker container name:
+
+    diffphysdrone_sim
+
+Important:
+Do not use this path directly:
+
+    /workspace/DiffPhysDrone/src/...
+
+The correct catkin workspace inside the container is:
+
+    /workspace/DiffPhysDrone/high_speed_flight
+
+
+1. Prepare GUI access on host
+-----------------------------
+
+Before launching Docker, run on the host:
+
+    xhost +local:root
+    xhost +local:docker
+
+If an old container is already running, stop it:
+
+    docker rm -f diffphysdrone_sim 2>/dev/null
+
+
+2. Launch Docker container
+--------------------------
+
+Run on the host:
+
+    docker run -it --rm \
+      --name diffphysdrone_sim \
+      --gpus all \
+      --net=host \
+      --ipc=host \
+      --privileged \
+      -e DISPLAY=$DISPLAY \
+      -e QT_X11_NO_MITSHM=1 \
+      -e NVIDIA_VISIBLE_DEVICES=all \
+      -e NVIDIA_DRIVER_CAPABILITIES=all \
+      -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+      -v /home/qqsiki4/DiffPhysDrone_eval:/workspace/DiffPhysDrone \
+      diffphysdrone-noetic:latest
+
+After entering the container, check that the workspace is visible:
+
+    cd /workspace/DiffPhysDrone/high_speed_flight
+
+    ls -la
+    ls devel
+    ls src/e2e_planner_v2
+    ls src/rpg_flightmare
+
+If the directory high_speed_flight is not found, the container was launched with the wrong -v mount.
+
+
+3. Check that GUI from Docker works
+-----------------------------------
+
+Inside the container:
+
+    echo $DISPLAY
+    rviz
+
+If RViz does not open, do not continue with the simulation launch.
+Close the container, run the following on the host:
+
+    xhost +local:root
+    xhost +local:docker
+
+Then launch Docker again using the command from section 2.
+
+If RViz opens, close it and continue.
+
+
+4. Terminal 1: launch ROS/Gazebo/RViz simulation.launch
+-------------------------------------------------------
+
+Inside the container:
+
+    cd /workspace/DiffPhysDrone/high_speed_flight
+
+    source /opt/ros/noetic/setup.bash
+    source devel/setup.bash
+
+    export CUDA_VISIBLE_DEVICES=0
+    export RPGQ_PARAM_DIR=/workspace/DiffPhysDrone/high_speed_flight/src/rpg_flightmare
+    export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+
+    rospack profile
+    rospack find e2e_planner_v2
+
+    roslaunch e2e_planner_v2 simulation.launch
+
+Expected result:
+
+    rospack find e2e_planner_v2
+
+should output:
+
+    /workspace/DiffPhysDrone/high_speed_flight/src/e2e_planner_v2
+
+Leave this terminal open.
+
+If RViz does not open when running simulation.launch, check GUI access using section 3.
+
+
+5. Terminal 2: launch Unity/Flightmare on host
+----------------------------------------------
+
+Important:
+Run flightmare.x86_64 on the host, not inside Docker.
+Inside Docker it previously crashed because of Vulkan/lavapipe.
+
+On the host:
+
+    cd /home/qqsiki4/DiffPhysDrone_eval/high_speed_flight/src/rpg_flightmare/flightrender
+
+    chmod +x flightmare.x86_64
+
+    ./flightmare.x86_64
+
+Expected result:
+The Unity/Flightmare window should open.
+
+If Unity does not open, run with log output:
+
+    ./flightmare.x86_64 -logFile /tmp/flightmare_host.log
+    cat /tmp/flightmare_host.log
+
+Leave the Unity/Flightmare window open.
+
+
+6. Terminal 3: launch test.sh inside Docker
+-------------------------------------------
+
+On the host, open a new terminal and connect to the running container:
+
+    docker exec -it diffphysdrone_sim bash
+
+Inside the container:
+
+    cd /workspace/DiffPhysDrone/high_speed_flight/src/e2e_planner_v2
+
+    source /opt/ros/noetic/setup.bash
+    source /workspace/DiffPhysDrone/high_speed_flight/devel/setup.bash
+
+    export CUDA_VISIBLE_DEVICES=0
+    export RPGQ_PARAM_DIR=/workspace/DiffPhysDrone/high_speed_flight/src/rpg_flightmare
+    export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtiff.so.5
+    export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+
+    ./test.sh
+
+If the error is:
+
+    python: command not found
+
+then run inside the container:
+
+    ln -s /usr/bin/python3 /usr/local/bin/python
+
+and then again:
+
+    ./test.sh
+
+If the error is:
+
+    ModuleNotFoundError: No module named 'open3d'
+
+then run inside the container:
+
+    python -m pip install --ignore-installed PyYAML open3d==0.18.0
+
+Check:
+
+    python - <<'PY'
+    import open3d as o3d
+    print(o3d.__version__)
+    PY
+
+Then run again:
+
+    ./test.sh
+
+
+7. Check image/RGB/depth topics
+-------------------------------
+
+If RViz is open, but Images -> RGB has status Warn and says "no image received",
+check the topics inside the container.
+
+Open a new terminal on the host:
+
+    docker exec -it diffphysdrone_sim bash
+
+Inside the container:
+
+    cd /workspace/DiffPhysDrone/high_speed_flight
+
+    source /opt/ros/noetic/setup.bash
+    source devel/setup.bash
+
+    rostopic list | sort | grep -Ei "image|camera|rgb|depth|render"
+
+If image topics appear, check their frequency:
+
+    rostopic hz /TOPIC_NAME
+
+For example:
+
+    rostopic hz /camera/rgb/image_raw
+
+In RViz, manually select the real image topic in Images -> RGB.
+
+If there are no image topics, Unity/Flightmare is not connected or not running.
+Check that the Unity window is open on the host.
+
+
+8. Correct launch order
+-----------------------
+
+Every time, use this order:
+
+1. On host:
+
+    xhost +local:root
+    xhost +local:docker
+
+2. On host:
+   Launch Docker container.
+
+3. In Docker, terminal 1:
+   Launch ROS/Gazebo/RViz:
+
+    roslaunch e2e_planner_v2 simulation.launch
+
+4. On host, terminal 2:
+   Launch Unity/Flightmare:
+
+    ./flightmare.x86_64
+
+5. In Docker, terminal 3:
+   Launch test:
+
+    ./test.sh
+
+Practical recommendation:
+First wait until simulation.launch opens Gazebo/RViz.
+Then launch Unity/Flightmare.
+After Unity has loaded, launch test.sh.
+
+
+9. Quick diagnostics
+--------------------
+
+Check that the container sees the workspace:
+
+    cd /workspace/DiffPhysDrone/high_speed_flight
+    ls devel
+    ls src/e2e_planner_v2
+
+Check that ROS sees the package:
+
+    source /opt/ros/noetic/setup.bash
+    source /workspace/DiffPhysDrone/high_speed_flight/devel/setup.bash
+
+    rospack profile
+    rospack find e2e_planner_v2
+
+Check that ROS time is running:
+
+    rostopic echo -n 1 /clock
+
+Check image topics:
+
+    rostopic list | sort | grep -Ei "image|camera|rgb|depth|render"
+
+Check ROS nodes:
+
+    rosnode list
+
+Expected nodes after launching the ROS part:
+
+    /gazebo
+    /hummingbird/agile_autonomy
+    /hummingbird/autopilot
+    /hummingbird/manual_flight_assistant
+    /hummingbird/rpg_rotors_interface
+    /rosout
+    /viz_face
+
+If the drone takes off but does not fly forward, check:
+
+    rostopic list | sort | grep -Ei "image|camera|rgb|depth|odom|command|cmd|traj|goal|agile|autopilot"
+
+    rosnode info /hummingbird/agile_autonomy | grep -Ei "Publications|Subscriptions|image|camera|rgb|depth|odom|command|cmd|traj|goal" -A40
+
+
+10. Notes from previous successful attempts
+-------------------------------------------
+
+- The ROS/Gazebo/RViz part should run inside Docker.
+- Unity/Flightmare should run on the host.
+- Running flightmare.x86_64 inside Docker caused segmentation fault.
+- The reason was likely Vulkan inside Docker using llvmpipe/lavapipe instead of NVIDIA.
+- The correct Docker mount is:
+
+    -v /home/qqsiki4/DiffPhysDrone_eval:/workspace/DiffPhysDrone
+
+- Therefore the correct workspace path inside Docker is:
+
+    /workspace/DiffPhysDrone/high_speed_flight
+
+- The correct test.sh path inside Docker is:
+
+    /workspace/DiffPhysDrone/high_speed_flight/src/e2e_planner_v2
+
+- The correct RPGQ_PARAM_DIR inside Docker is:
+
+    /workspace/DiffPhysDrone/high_speed_flight/src/rpg_flightmare

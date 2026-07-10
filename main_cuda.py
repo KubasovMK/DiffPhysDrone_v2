@@ -10,6 +10,8 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
+import os
+
 import argparse
 from model import Model
 
@@ -60,9 +62,15 @@ parser.add_argument(
     action=argparse.BooleanOptionalAction,
 )
 
+parser.add_argument('--logdir', default='runs', help='TensorBoard log directory')
+parser.add_argument('--ckpt_dir', default='.', help='Directory for checkpoints')
+
 args = parser.parse_args()
-writer = SummaryWriter()
+writer = SummaryWriter(log_dir=args.logdir)
 print(args)
+
+os.makedirs(args.logdir, exist_ok=True)
+os.makedirs(args.ckpt_dir, exist_ok=True)
 
 device = torch.device('cuda')
 
@@ -307,7 +315,7 @@ for i in pbar:
             writer.add_figure('v_history', fig_v, i + 1)
             writer.add_figure('a_reals', fig_a, i + 1)
         if (i + 1) % 10000 == 0:
-            torch.save(model.state_dict(), f'checkpoint{i//10000:04d}.pth')
+            torch.save(model.state_dict(), os.path.join(args.ckpt_dir, f'checkpoint{i//10000:04d}.pth'))
         if (i + 1) % 25 == 0:
             for k, v in scaler_q.items():
                 writer.add_scalar(k, sum(v) / len(v), i + 1)

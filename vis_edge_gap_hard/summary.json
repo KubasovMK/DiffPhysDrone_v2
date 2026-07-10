@@ -1,0 +1,97 @@
+[
+  {
+    "rank": 0,
+    "trial_id": 11,
+    "batch_idx": 1,
+    "score": 167042.2309472561,
+    "metrics": {
+      "max_edge_advantage": 83516.5,
+      "center_near_score": 6.171904563903809,
+      "lateral_shift": 7.687971115112305,
+      "max_lateral_excursion": 7.687971115112305,
+      "left_mean_min": 0.7445746660232544,
+      "left_mean_max": 83598.703125,
+      "center_mean_min": 5.828095436096191,
+      "center_mean_max": 1485.569580078125,
+      "right_mean_min": 1.5915932655334473,
+      "right_mean_max": 2134.330810546875
+    },
+    "case_dir": "vis_edge_gap_hard/case_00"
+  },
+  {
+    "rank": 1,
+    "trial_id": 16,
+    "batch_idx": 6,
+    "score": 108309.56289196014,
+    "metrics": {
+      "max_edge_advantage": 54152.3671875,
+      "center_near_score": 11.00309944152832,
+      "lateral_shift": 2.077742099761963,
+      "max_lateral_excursion": 2.077742099761963,
+      "left_mean_min": 0.9838409423828125,
+      "left_mean_max": 80.57210540771484,
+      "center_mean_min": 0.9969001412391663,
+      "center_mean_max": 84.84026336669922,
+      "right_mean_min": 1.0087370872497559,
+      "right_mean_max": 54162.76953125
+    },
+    "case_dir": "vis_edge_gap_hard/case_01"
+  },
+  {
+    "rank": 2,
+    "trial_id": 13,
+    "batch_idx": 12,
+    "score": 54862.30533528328,
+    "metrics": {
+      "max_edge_advantage": 27422.38671875,
+      "center_near_score": 3.4977312088012695,
+      "lateral_shift": 16.6574649810791,
+      "max_lateral_excursion": 16.6574649810791,
+      "left_mean_min": 1.5980603694915771,
+      "left_mean_max": 27435.453125,
+      "center_mean_min": 8.50226879119873,
+      "center_mean_max": 79.70234680175781,
+      "right_mean_min": 5.345346927642822,
+      "right_mean_max": 27.23032569885254
+    },
+    "case_dir": "vis_edge_gap_hard/case_02"
+  },
+  {
+    "rank": 3,
+    "trial_id": 12,
+    "batch_idx": 8,
+    "score": 42318.30259871483,
+    "metrics": {
+      "max_edge_advantage": 21154.55078125,
+      "center_near_score": 3.9012670516967773,
+      "lateral_shift": 8.225719451904297,
+      "max_lateral_excursion": 8.225719451904297,
+      "left_mean_min": 6.582705020904541,
+      "left_mean_max": 21168.12109375,
+      "center_mean_min": 8.098732948303223,
+      "center_mean_max": 66.73860931396484,
+      "right_mean_min": 2.0407018661499023,
+      "right_mean_max": 64.96297454833984
+    },
+    "case_dir": "vis_edge_gap_hard/case_03"
+  },
+  {
+    "rank": 4,
+    "trial_id": 13,
+    "batch_idx": 26,
+    "score": 40771.277240753174,
+    "metrics": {
+      "max_edge_advantage": 20378.263671875,
+      "center_near_score": 6.308795928955078,
+      "lateral_shift": 13.172698020935059,
+      "max_lateral_excursion": 13.172698020935059,
+      "left_mean_min": 7.472466468811035,
+      "left_mean_max": 20386.796875,
+      "center_mean_min": 5.691204071044922,
+      "center_mean_max": 73.59416961669922,
+      "right_mean_min": 1.2465754747390747,
+      "right_mean_max": 6789.70849609375
+    },
+    "case_dir": "vis_edge_gap_hard/case_04"
+  }
+]

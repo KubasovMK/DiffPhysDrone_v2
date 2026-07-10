@@ -1,0 +1,17 @@
+{
+  "trial_id": 12,
+  "batch_idx": 8,
+  "score": 42318.30259871483,
+  "metrics": {
+    "max_edge_advantage": 21154.55078125,
+    "center_near_score": 3.9012670516967773,
+    "lateral_shift": 8.225719451904297,
+    "max_lateral_excursion": 8.225719451904297,
+    "left_mean_min": 6.582705020904541,
+    "left_mean_max": 21168.12109375,
+    "center_mean_min": 8.098732948303223,
+    "center_mean_max": 66.73860931396484,
+    "right_mean_min": 2.0407018661499023,
+    "right_mean_max": 64.96297454833984
+  }
+}
