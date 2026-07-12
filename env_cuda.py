@@ -366,6 +366,7 @@ class Env:
 
         dtheta = self.traj_yaw[:, None] - yaw_now[:, None]
         dtheta = torch.atan2(torch.sin(dtheta), torch.cos(dtheta))
+        dtheta = dtheta.expand(B, K)
 
         traj = torch.stack(
             [

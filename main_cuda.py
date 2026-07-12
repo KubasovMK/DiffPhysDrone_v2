@@ -60,7 +60,7 @@ parser.add_argument(
     action=argparse.BooleanOptionalAction,
 )
 
-parser.add_argument('--traj_conditioning', type=float, action='store_true')
+parser.add_argument('--traj_conditioning', default=False, action='store_true')
 parser.add_argument('--traj_points', type=int, default=8)
 parser.add_argument('--traj_dt', type=float, default=0.25)
 parser.add_argument('--traj_pos_scale', type=float, default=5.0)
@@ -105,6 +105,8 @@ model = Model(
     traj_points=traj_points,
     traj_dim=6
 )
+
+model = model.to(device)
 
 if args.resume:
     state_dict = torch.load(args.resume, map_location=device)
@@ -186,7 +188,7 @@ for i in pbar:
         fwd[:, 2] = 0
         up[:, 2] = 1
         fwd = F.normalize(fwd, 2, -1)
-        R = torch.stack([fwd, torch.cross(up, fwd), up], -1)
+        R = torch.stack([fwd, torch.cross(up, fwd, dim=-1), up], -1)
 
         target_v_norm = torch.norm(target_v_raw, 2, -1, keepdim=True)
         target_v_unit = target_v_raw / target_v_norm
