@@ -282,6 +282,13 @@ for i in pbar:
     pbar.set_description_str(f'loss: {loss:.3f}')
     optim.zero_grad()
     loss.backward()
+    if i % 50 == 0 and args.traj_conditioning:
+        traj_grad_norm = 0.0
+        for name, p in model.named_parameters():
+            if "traj_proj" in name and p.grad is not None:
+                traj_grad_norm += p.grad.detach().norm().item()
+        print("traj_grad_norm:", traj_grad_norm)
+
     optim.step()
     sched.step()
 
