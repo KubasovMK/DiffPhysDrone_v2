@@ -2,26 +2,13 @@
 
 ## Overview
 
-This repository contains the training code for our research on **Learning Vision-based Agile Flight via Differentiable Physics**. Accepted by [**Nature Machine Intelligence'25**](https://www.nature.com/articles/s42256-025-01048-0). 
+This repository contains changed training code for research on **Learning Vision-based Agile Flight via Differentiable Physics**. Initial code is placed in master branch. 
 
-[Project webpage](https://henryhuyu.github.io/DiffPhysDrone_Web/) is alive.
+[Link](https://github.com/KubasovMK/DiffPhysDrone-AvoidBench-Integration) to code of integration DiffPhysDrone into [AvoidBench](https://github.com/tudelft/AvoidBench).
 
-## Quick Demos
-### Single Agent Flights
-<table>
-  <tr>
-    <td><img src="./gifs/20ms.gif" alt="GIF 1" width="300"></td>
-    <td><img src="./gifs/fpv_dense.gif" alt="GIF 2" width="300"></td>
-  </tr>
-</table>
+Link to our own benchmark will be here soon.
 
-### Swarm Tasks
-<table>
-  <tr>
-    <td><img src="./gifs/swap_position.gif" alt="GIF 1" width="300"></td>
-    <td><img src="./gifs/main_task.gif" alt="GIF 2" width="300"></td>
-  </tr>
-</table>
+[Project webpage](https://henryhuyu.github.io/DiffPhysDrone_Web/).
 
 
 ## Environment Setup
