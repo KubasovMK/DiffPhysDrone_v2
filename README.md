@@ -6,7 +6,7 @@ This repository contains changed training code for research on **Learning Vision
 
 [Link](https://github.com/KubasovMK/DiffPhysDrone-AvoidBench-Integration) to code of integration DiffPhysDrone into [AvoidBench](https://github.com/tudelft/AvoidBench).
 
-Link to our own benchmark will be here soon.
+[Link](https://github.com/KubasovMK/DiffPhysDrone_benchmark) to our own benchmark for different models trained on DiffPhysDrone.
 
 [Project webpage](https://henryhuyu.github.io/DiffPhysDrone_Web/).
 
